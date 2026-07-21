@@ -1,20 +1,18 @@
 `timescale 1ms/1us
 //
-// Minimal smoke test for main.v -- just presses the key once and
-// watches led toggle. No bounce modelling, no boundary cases.
-// Reset is currently active-HIGH to match main.v's current port.
+// REVIEW CLAUDE FEEBACK FROM LAST SESSION TO FIX TESTBENCH
 //
 module testbench;
 
     reg  clk;
-    reg  reset;
+    reg  rst_n;
     reg  key;
     wire led;
 
-    main dut (
+    top #(.T_DEBOUNCE(30)) dut(
         .clk   (clk),
-        .reset (reset),
-        .key   (key),
+        .rst_n (rst_n),
+        .key_n   (key),
         .led   (led)
     );
 
@@ -23,30 +21,82 @@ module testbench;
     always #0.01 clk = ~clk;
 
     initial begin
-        reset = 1'b1;
-        key   = 1'b0;
+        rst_n = 1'b0;
+        key_n   = 1'b1;
         repeat (5) @(posedge clk);
-        reset = 1'b0;
+        rst_n = 1'b1;
 
         $display("t=%0t reset released, led=%b", $time, led);
 
-        // simple clean press, no bounce
+        // T1. simple clean press, no bounce. One pulse expected
         repeat (5) @(posedge clk);
-        key = 1'b1;
-        $display("t=%0t key pressed, led=%b", $time, led);
-
-        // hold long enough for sync + debounce + edge detect to settle
+        key_n = 1'b0;
         repeat (100) @(posedge clk);
-        $display("t=%0t after settle, led=%b", $time, led);
-
-        // release
-        key = 1'b0;
-        $display("t=%0t key released, led=%b", $time, led);
-
+        key_n = 1'b1;
         repeat (100) @(posedge clk);
-        $display("t=%0t final, led=%b", $time, led);
+	
 
+	//T2. A press w. a realistic bounce
+	repeat (10) begin
+            #10 key_n = ~key_n;
+        end
+	key_n = 1'b0;
+	repeat (100) @(posedge clk);
+
+
+	//T3. Release w. a bounce. Zero press-pulses expected
+	repeat (10) begin
+            #10 key_n = ~key_n;
+        end
+	key_n = 1'b1;
+	repeat (100) @(posedge clk);
+
+	//T4. a glitch shorter than T_DEBOUNCE. Zero pulses expected.
+	key_n = 1'b0;
+	repeat (100) @(posedge clk);
+	repeat (10) begin
+            #10 key_n = ~key_n;
+        end
+	key_n = 1'b1;
+	repeat (50) @(posedge clk);
+
+	key_n = 1'b1;
         $finish;
-    end
 
+	// T5. A press held for a very long time. Exactly one pulse expected ? not one per cycle.
+	key_n = 1'b0;
+        repeat (10000) @(posedge clk);
+        key_n = 1'b1;
+        repeat (100) @(posedge clk);
+
+	// T6. Boundary condition: an input held stable for exactly T_DEBOUNCE, 
+	// and for T_DEBOUNCE - 1. Off-by-one errors in the counter live precisely here.
+	key_n = 1'b0;
+        repeat (30) @(posedge clk);
+        key_n = 1'b1;
+        repeat (100) @(posedge clk);
+	key_n = 1'b0;
+        repeat (29) @(posedge clk);
+
+	//T7. Reset asserted in the middle of a debounce interval. 
+	// The design must not emit a stale pulse on release of reset.
+	repeat (5) @(posedge clk);
+        key_n = 1'b0;
+        repeat (20) @(posedge clk);
+	rst_n = 1'b0;
+	repeat (100) @(posedge clk);
+	key_n   = 1'b1;
+        repeat (5) @(posedge clk);
+        rst_n = 1'b1;
+
+	// T8. Ten presses in sequence. 
+	//The LED must end in the correct state.
+	repeat (10) @(posedge clk) begin
+		repeat (5) @(posedge clk);
+        	key_n = 1'b0;
+        	repeat (100) @(posedge clk);
+        	key_n = 1'b1;
+        	repeat (100) @(posedge clk);
+	end
+    end
 endmodule

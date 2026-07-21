@@ -1,14 +1,14 @@
 
 module synchroniser (
 	input clk,
-	input reset,
+	input rst_n,
 	input async_in,
-	output reg sync_out
+	(* ASYNC_REG = "TRUE" *) output reg sync_out
 );
-	reg Ds;
+	(* ASYNC_REG = "TRUE" *) reg Ds;
 
 always @(posedge clk) begin
-	if (reset) begin
+	if (!rst_n) begin
 		Ds <= 1'b0;
 		sync_out<= 1'b0;
 	end else begin

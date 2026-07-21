@@ -8,17 +8,17 @@
 module edgedetector (
 	input in,
 	input clk,
-	input reset,
+	input rst_n,
 	output reg pulse
 );
 	
 	reg prev;
 always @(posedge clk) begin
-	if (reset) begin
+	if (!rst_n) begin
 		pulse <= 1'b0;
 		prev <= 1'b0;
 	end else begin
-		pulse <= (prev != in);
+		pulse <= ~prev & in;
 		prev <= in;
 	end
 end
