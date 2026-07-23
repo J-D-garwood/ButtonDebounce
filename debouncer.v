@@ -15,17 +15,17 @@ module debouncer #(
 	always @(posedge clk) begin
 		prev <= sig;
 		if(!rst_n) begin
-			counter <= 0;
+			counter <= 1;
 			stable_out <= 1'b0;
 		end else begin
 			if (prev == sig) begin
-				if (counter < T_DEBOUNCE) begin
+				if (counter < T_DEBOUNCE - 1) begin
 					counter <= counter + 1'b1;
 				end else begin
 					stable_out <= sig;
 				end
 			end else begin
-				counter <= 0;
+				counter <= 1;
 			end
 		end
 	end

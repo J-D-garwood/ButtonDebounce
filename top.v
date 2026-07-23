@@ -1,11 +1,4 @@
-// reset must become rst_n (the 
-// pin constraints expect active low)
 
-// I DON'T THINK THIS IS QUiTE WOKRING 
-// THE WAY
-// I WANT IT TO.. should turn on and stay on 
-// with one press, not a hold... investigate
-// futher
 module top #(
 	parameter T_DEBOUNCE = 3000
 )(
